@@ -19,13 +19,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller==6.10.0
 
+      # A folder build (--onedir) starts much faster than --onefile, which unpacks
+      # itself into a temp folder on every launch.
       # PyInstaller misses a few things on its own:
       # - pytun_pmd3 and pywintunx_pmd3 ship the Windows tunnel DLLs and driver
       # - zeroconf's Cython modules import each other invisibly
       # - pyimg4 reads its own package metadata at import time
       - name: Build exe
         run: >
-          pyinstaller --onefile --name iphone-gps-spoof
+          pyinstaller --onedir --name iphone-gps-spoof
           --add-data "src/templates;templates"
           --collect-all pymobiledevice3
           --collect-all pytun_pmd3
@@ -39,7 +41,7 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
         run: |
-          $proc = Start-Process -FilePath dist\iphone-gps-spoof.exe -ArgumentList '--no-browser', '--port', '54321' `
+          $proc = Start-Process -FilePath dist\iphone-gps-spoof\iphone-gps-spoof.exe -ArgumentList '--no-browser', '--port', '54321' `
             -PassThru -RedirectStandardOutput out.log -RedirectStandardError err.log
           $ok = $false
           for ($i = 0; $i -lt 45; $i++) {
@@ -56,4 +58,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: iphone-gps-spoof-windows
-          path: dist/iphone-gps-spoof.exe
+          path: dist/iphone-gps-spoof/

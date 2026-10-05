@@ -17,7 +17,7 @@ import subprocess
 import pycountry
 
 from flask import Flask, jsonify, render_template, request
-from urllib3.exceptions import InsecureRequestWarning, ConnectionError
+from urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 from contextlib import asynccontextmanager
 
@@ -83,8 +83,6 @@ home_dir = os.path.expanduser("~")
 is_windows = sys.platform == 'win32'
 base_directory = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(sys.argv[0])))
 flask_port = 54321
-api_url = "https://projectzerothree.info/api.php?format=json"
-api_data = None
 user_locale = None
 location = None
 rsd_data = None
@@ -102,9 +100,6 @@ pair_record = None
 error_message = None
 sudo_message = ""
 captured_output = None
-GITHUB_REPO = 'davesc63/GeoPort'
-CURRENT_VERSION_FILE = 'CURRENT_VERSION'
-BROADCAST_FILE = 'BROADCAST'
 APP_VERSION_NUMBER = "2.3.3"
 APP_VERSION_TYPE = "fuel"
 terminate_tunnel_thread = False
@@ -134,23 +129,6 @@ if current_platform == "darwin":
         sudo_message = ""
 
 
-
-def fetch_api_data(api_url):
-    global api_data
-    try:
-        api_data = requests.get(api_url, verify=False).json()
-        return api_data
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error: {e}")
-        logger.error(f"API is unreachable or there was an error during the request")
-        logger.error("Sorry - Fuel data is not available")
-        return None
-    except ConnectionError as e:
-        logger.error("Error: Name resolution failed.")
-        logger.error("Please check your internet connection or the correctness of the API URL.")
-        logger.error("Sorry - Fuel data is not available")
-        logger.error(f"Details: {e}")
-        return None
 
 def create_geoport_folder():
     # Define the path to the GeoPort folder
@@ -371,7 +349,7 @@ def get_user_country():
 
 def get_country_from_ip():
     try:
-        response = requests.get("http://ip-api.com/json/")
+        response = requests.get("http://ip-api.com/json/", timeout=5)
         if response.status_code == 200:
             data = response.json()
             country_name = data.get("country")
@@ -448,38 +426,6 @@ def stop_tunnel_thread():
     # Set the terminate flag to True to stop the thread
     terminate_tunnel_thread = True
     return jsonify("Tunnel stopped")
-
-@app.route('/api/data/<fuel_type>')
-def get_fuel_type_data(fuel_type):
-    selected_fuel_region = request.args.get('region', 'All')
-
-    if api_data is None:
-        logger.error("API Data is none, Fuel data is not available")
-        return jsonify({}), 500  # Return an empty response with status code 500 (Internal Server Error)
-
-    all_region_data = next(
-        (region['prices'] for region in api_data['regions'] if region['region'] == selected_fuel_region), [])
-
-    selected_data = next((entry for entry in all_region_data if entry['type'] == fuel_type), None)
-
-    return jsonify(selected_data)
-
-
-@app.route('/api/fuel_types')
-def get_fuel_types():
-    selected_fuel_region = request.args.get('region', 'All')
-
-    if api_data is None:
-        logger.error("API Data is none, sorry - Fuel data is not available")
-        return jsonify({}), 500  # Return an empty response with status code 500 (Internal Server Error)
-
-    all_region_data = next(
-        (region['prices'] for region in api_data['regions'] if region['region'] == selected_fuel_region), [])
-
-    fuel_types = set(entry['type'] for entry in all_region_data)
-
-    return jsonify(list(fuel_types))
-
 
 @app.route('/update_location', methods=['POST'])
 def update_location():
@@ -1128,44 +1074,6 @@ async def stop_location():
         return jsonify({'error': error_message})
 
 
-def get_github_version():
-    try:
-        # Make a request to the GitHub API to get the content of CURRENT_VERSION file
-        url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{CURRENT_VERSION_FILE}'
-        response = requests.get(url)
-
-        response.raise_for_status()
-
-        # Parse the content of the file
-        github_version = response.text.strip()
-
-
-        return github_version
-    except requests.RequestException as e:
-
-        return None
-
-
-def get_github_broadcast():
-    try:
-        # Make a request to the GitHub API to get the content of CURRENT_VERSION file
-        url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{BROADCAST_FILE}'
-        logger.error(f"Github URL: {url}")
-
-        response = requests.get(url, verify=False)
-        logger.error(f"github response: {response}")
-        #response.raise_for_status()
-
-        # Parse the content of the file
-        github_broadcast = response.text.strip()
-        logger.error(f"GITHUB BROADCAST MESSAGE:")
-
-        return github_broadcast
-    except requests.RequestException as e:
-
-        return None
-
-
 def remove_ansi_escape_codes(text):
     ansi_escape = re.compile(r'\x1b[^m]*m')
     return ansi_escape.sub('', text)
@@ -1380,31 +1288,13 @@ def exit_app():
 
 @app.route('/')
 def index():
-    # global error_message
-    fetch_api_data(api_url)
-    # Get the GitHub version
-    github_version = get_github_version()
-    github_broadcast = get_github_broadcast()
     user_locale = get_user_country()
     logger.info(f"Country: {user_locale}")
     logger.info(f"Current platform: {platform}")
     logger.info(f"App Version = {APP_VERSION_NUMBER}")
     logger.info(f"base dir =  {base_directory}")
-    logger.info(f"GitHub Version = {github_version}")
 
-    #list_devices()
-    # Compare with the locally hardcoded version
-    if github_version and github_version > APP_VERSION_NUMBER:
-        version_message = f"Update available. New Version is {github_version}"
-
-    elif github_version and github_version < APP_VERSION_NUMBER:
-        version_message = f"Beta Testing. App version is {APP_VERSION_NUMBER} - github is {github_version}"
-
-    else:
-        version_message = None
-
-    return render_template('map.html', version_message=version_message, github_broadcast=github_broadcast,
-                           user_locale=user_locale, app_version_num=APP_VERSION_NUMBER,
+    return render_template('map.html', user_locale=user_locale, app_version_num=APP_VERSION_NUMBER,
                            app_version_type=APP_VERSION_TYPE, error_message=error_message, current_platform=platform,
                            sudo_message=sudo_message)
 
