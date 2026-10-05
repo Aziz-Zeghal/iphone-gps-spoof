@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/html">
+<html lang="en">
 
 <head>
-    <title>GeoPort</title>
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>iphone-gps-spoof</title>
     <script src="https://cdn.jsdelivr.net/npm/babel-polyfill@latest/dist/polyfill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-providers@2.0.0/leaflet-providers.min.js"></script>
@@ -29,358 +29,811 @@
     <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2.4.0/src/easy-button.min.css" rel="stylesheet">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
 
     <style>
-.leaflet-menu {
-    display: none;
-    position: absolute;
-    box-shadow: 0 1px 7px rgba(0,0,0,.4);
-    -webkit-border-radius: 4px;
-    border-radius: 4px;
-    padding: 4px 0;
-    background-color: #fff;
-    cursor: default;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    user-select: none;
-    z-index: 1001
+/* An amber-backlit instrument panel: slate body, peach type, apricot for the
+   position and the main actions. The position display lights up (apricot
+   fill) while the iPhone is simulating that exact spot. */
+:root {
+    --slate: #3e4e50;
+    --peach: #facfad;
+    --apricot: #f8bd7f;
+
+    --well: #2e3b3d;
+    --raised: #4a5c5e;
+    --ember: #e98a52;
+    --text: var(--peach);
+    --text-dim: rgba(250, 207, 173, 0.85);
+    --text-faint: rgba(250, 207, 173, 0.55);
+    --rule: rgba(250, 207, 173, 0.14);
+    --rule-strong: rgba(250, 207, 173, 0.3);
+
+    --font: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-display: "Barlow Condensed", "Barlow", "Arial Narrow", sans-serif;
+    --radius: 6px;
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.leaflet-menu a.leaflet-menu-item {
-    display: block;
-    color: #222;
-    font-size: 12px;
-    line-height: 20px;
-    text-decoration: none;
-    padding: 0 12px;
-    border-top: 1px solid transparent;
-    border-bottom: 1px solid transparent;
-    cursor: default;
-    outline: 0
+html,
+body {
+    height: 100%;
 }
 
-.leaflet-menu a.leaflet-menu-item.over {
-    background-color: #f4f4f4;
-    border-top: 1px solid #f0f0f0;
-    border-bottom: 1px solid #f0f0f0
+body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--text);
+    background: var(--slate);
+    -webkit-font-smoothing: antialiased;
 }
 
-.leaflet-menu-icon {
-    margin: 2px 8px 0 0;
-    width: 16px;
-    height: 16px;
-    float: left;
-    border: 0
+/* ---------- Layout: sidebar + full-bleed map ---------- */
+.app {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
 }
 
-        #map {
-            width: 100%;
-            height: 500px;
-            max-height: 70vh;
-        }
-
-        .coordinates-container {
-            margin-top: 10px;
-        }
-
-        /* Dark mode styles */
-        body.dark-mode {
-            background-color: #222; /* Darker background color for main page */
-            color: #fff;
-        }
-
-
-        body.dark-mode div[class="p-3 px-md-4 mb-3 bg-white border-bottom box-shadow"],
-        body.dark-mode select[class="custom-select"],
-        body.dark-mode select[class="custom-select d-block w-100"],
-        body.dark-mode input[type="option"],
-        body.dark-mode input[class="form-control"],
-        body.dark-mode #border,
-        body.dark-mode .collapse textarea,
-        body.dark-mode textarea {
-            background-color: #333; /* Dark background color for text inputs in dark mode */
-            color: #fff; /* Light text color for text inputs in dark mode */
-            border-color: #666; /* Dark border color for text inputs in dark mode */
-        }
-
-body.dark-mode #border.dark-mode-bg {
-        background-color: #222; /* Darker background color for main page in dark mode */
-        border-color: #666; /* Dark border color for the container in dark mode */
-    }
-
-    body.dark-mode #border.dark-mode-bg .box-shadow {
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* Dark shadow for the container in dark mode */
-    }
-
-    /* Dark mode toast styles */
-body.dark-mode .toast {
-    background-color: #333; /* Dark background color for toast */
-    color: #fff; /* Light text color for toast in dark mode */
-}
-
-body.dark-mode .toast-header {
-    background-color: #555; /* Dark background color for toast header */
-    color: #fff; /* Light text color for toast header in dark mode */
-}
-
-body.dark-mode .toast-header .close {
-    color: #fff; /* Light close icon color for toast in dark mode */
-}
-
-body.dark-mode .toast-body {
-    background-color: #333; /* Dark background color for toast body */
-    color: #fff; /* Light text color for toast body in dark mode */
-}
-/* Dark mode modal styles */
-body.dark-mode .modal-content {
-    background-color: #333; /* Dark background color for modal content */
-    color: #fff; /* Light text color for modal content in dark mode */
-}
-
-body.dark-mode .modal-header {
-    background-color: #555; /* Dark background color for modal header */
-    color: #fff; /* Light text color for modal header in dark mode */
-    border-bottom: 1px solid #666; /* Dark border color for modal header in dark mode */
-}
-
-body.dark-mode .modal-body {
-    background-color: #333; /* Dark background color for modal body */
-    color: #fff; /* Light text color for modal body in dark mode */
-}
-
-body.dark-mode .modal-footer {
-    background-color: #333; /* Dark background color for modal footer */
-    color: #fff; /* Light text color for modal footer in dark mode */
-    border-top: 1px solid #666; /* Dark border color for modal footer in dark mode */
-}
-
-body.dark-mode .modal-header .close {
-    color: #fff; /* Light close icon color for modal in dark mode */
-}
-
-body.dark-mode .modal-footer button {
-    color: #fff; /* Light button text color for modal footer in dark mode */
-    background-color: #555; /* Dark button background color for modal footer in dark mode */
-    border-color: #555; /* Dark border color for buttons in modal footer in dark mode */
-}
-.marker-menu {
+.panel {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-    padding: 10px;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    gap: 28px;
+    min-height: 0;
+    padding: 20px 24px 16px;
+    overflow-y: auto;
+    background: var(--slate);
+    border-right: 1px solid var(--well);
 }
 
-.menu-item {
-    background-color: #f8f9fa;
-    border: none;
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s;
+.map-pane {
+    position: relative;
+    isolation: isolate; /* keep Leaflet's z-indexes below modals and toasts */
+    min-width: 0;
 }
 
-.menu-item:hover {
-    background-color: #e9ecef;
-}
-/* Adjust the styling of the custom button to remove any outlines */
-.leaflet-control-filelayer .leaflet-control-filelayer-custom {
-    outline: none !important; /* Remove any outline */
-    border: none !important; /* Remove any border */
-    box-shadow: none !important; /* Remove any box-shadow */
+#map {
+    position: absolute;
+    inset: 0;
 }
 
-/* Add margin to each button except for the last one */
-.leaflet-control-filelayer-custom {
-    margin-bottom: 1px; /* Adjust the margin as needed */
-}
-
-/* Remove margin from the last button */
-.leaflet-control-filelayer-custom:first-child {
-    margin-top: 1px;
-}
-
-/* Add a bottom border to each button except for the last one */
-.leaflet-control-filelayer-custom:not(:last-child) {
-    border-bottom: 1px solid gray;
-}
-.leaflet-control-filelayer .leaflet-control-send-gpx1 {
-    outline: none !important; /* Remove any outline */
-    border: none !important; /* Remove any border */
-    box-shadow: none !important; /* Remove any box-shadow */
-}*/
-.custom-popup-content {
-        width: 300px; /* Adjust the width as needed */
+@media (max-width: 760px) {
+    .app {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(260px, 46dvh) auto;
+        height: auto;
+        min-height: 100dvh;
     }
+
+    .map-pane {
+        order: -1;
+    }
+
+    .panel {
+        gap: 22px;
+        padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+        overflow: visible;
+        border-top: 1px solid var(--well);
+        border-right: 0;
+    }
+}
+
+/* ---------- Panel header ---------- */
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.wordmark {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+}
+
+.link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.link-btn:hover {
+    color: var(--apricot);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.link-btn:focus-visible {
+    outline: 2px solid var(--apricot);
+    outline-offset: 2px;
+}
+
+.notice {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    background: var(--well);
+    border-left: 3px solid var(--ember);
+}
+
+/* ---------- Position display ---------- */
+.fix-coords {
+    display: grid;
+    margin: 0;
+    padding: 14px 16px 12px;
+    font-family: var(--font-display);
+    font-size: 2.75rem;
+    font-weight: 500;
+    line-height: 1.04;
+    font-variant-numeric: tabular-nums;
+    color: var(--apricot);
+    background: var(--well);
+    border-radius: var(--radius);
+    transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+
+.unit {
+    margin-left: 0.08em;
+    font-size: 0.5em;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: color 0.3s var(--ease);
+}
+
+.fix-coords.is-live {
+    color: var(--slate);
+    background: var(--apricot);
+}
+
+.fix-coords.is-live .unit {
+    color: var(--slate);
+}
+
+.fix-hint {
+    margin: 10px 0 0;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+}
+
+/* ---------- Fields ---------- */
+.field-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+}
+
+.field-row {
+    display: flex;
+    gap: 8px;
+}
+
+.field-row > .field {
+    flex: 1;
+    min-width: 0;
+}
+
+.field,
+.form-control {
+    height: 44px;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text);
+    background-color: var(--well);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+}
+
+textarea.form-control {
+    height: auto;
+    padding: 10px 12px;
+}
+
+.field::placeholder,
+.form-control::placeholder {
+    color: var(--text-faint);
+}
+
+.field:hover,
+.form-control:hover {
+    border-color: var(--rule-strong);
+}
+
+.field:focus,
+.form-control:focus {
+    color: var(--text);
+    background-color: var(--well);
+    border-color: transparent;
+    outline: 2px solid var(--apricot);
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+.field:disabled,
+.form-control:disabled {
+    opacity: 0.6;
+    background-color: var(--well);
+}
+
+select.field {
+    padding-right: 34px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23facfad' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+}
+
+select.field option {
+    color: var(--text);
+    background: var(--well);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 22px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.btn:focus {
+    box-shadow: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--apricot);
+    outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn.disabled {
+    color: var(--text-faint);
+    background-color: transparent;
+    border-color: var(--rule);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.actions > .btn:first-child {
+    flex: 1;
+}
+
+/* Simulate and Connect are never active at the same time, so they share the primary style */
+.btn-sim,
+.btn-connect,
+.modal .btn-primary,
+.modal .btn-secondary {
+    color: var(--slate);
+    background-color: var(--apricot);
+}
+
+.btn-sim:hover:not(:disabled),
+.btn-connect:hover:not(:disabled),
+.modal .btn-primary:hover,
+.modal .btn-secondary:hover {
+    color: var(--slate);
+    background-color: var(--peach);
+}
+
+/* Bootstrap 4's :active rules out-rank the ones above */
+.modal .btn-secondary:not(:disabled):not(.disabled):active,
+.modal .btn-primary:not(:disabled):not(.disabled):active {
+    color: var(--slate);
+    background-color: var(--peach);
+    border-color: transparent;
+}
+
+.modal .btn:not(:disabled):not(.disabled):active:focus {
+    box-shadow: none;
+}
+
+.btn-stop,
+.btn-quiet {
+    color: var(--text);
+    background-color: transparent;
+    border-color: var(--rule-strong);
+}
+
+.btn-stop:hover:not(:disabled) {
+    color: var(--slate);
+    background-color: var(--peach);
+    border-color: var(--peach);
+}
+
+.btn-quiet:hover:not(:disabled) {
+    color: var(--text);
+    background-color: var(--raised);
+    border-color: var(--text-dim);
+}
+
+.btn-square {
+    flex: none;
+    width: 44px;
+    padding: 0;
+}
+
+/* ---------- iPhone connection (pinned to the bottom of the panel) ---------- */
+.device {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr); /* let the long device name shrink instead of widening the panel */
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+}
+
+.device .field-label {
+    margin-bottom: -4px;
+}
+
+.panel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+}
+
+.status-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    background: var(--text-faint);
+    border-radius: 50%;
+}
+
+.status[data-state="connecting"] .status-dot {
+    background: var(--apricot);
+    animation: pulse 1.2s var(--ease) infinite;
+}
+
+.status[data-state="connected"] .status-dot {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--apricot);
+}
+
+.status[data-state="simulating"] {
+    color: var(--text);
+}
+
+.status[data-state="simulating"] .status-dot {
+    background: var(--apricot);
+}
+
+.status[data-state="error"] .status-dot {
+    background: var(--ember);
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.credit {
+    flex: none;
+    font-size: 0.8125rem;
+    color: var(--text-dim);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.credit:hover {
+    color: var(--apricot);
+}
+
+/* ---------- Map ---------- */
+.leaflet-container {
+    font-family: var(--font);
+    background: #aad3df;
+}
+
+/* The target pin in slate, matching the panel */
+.leaflet-marker-icon[src$="/marker-icon.png"],
+.leaflet-marker-icon[src$="/marker-icon-2x.png"] {
+    filter: hue-rotate(-15deg) saturate(0.25) brightness(0.6);
+}
+
+.map-pane .leaflet-bar,
+.map-pane .leaflet-control-layers {
+    overflow: hidden;
+    background: var(--slate);
+    border: 1px solid var(--well) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: 0 1px 4px rgba(20, 28, 29, 0.35) !important;
+}
+
+/* The trash link carries .leaflet-bar too; it sits inside the toolbar, so no frame of its own */
+.map-pane .leaflet-control-filelayer .leaflet-bar {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Easy-button sets inline font-size/padding, hence the !important */
+.map-pane .leaflet-bar a,
+.map-pane .leaflet-bar button {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px !important;
+    height: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+    color: var(--text) !important;
+    background: var(--slate) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--rule) !important;
+    border-radius: 0 !important;
+    outline: none;
+    cursor: pointer;
+}
+
+.map-pane .leaflet-bar a:last-child,
+.map-pane .leaflet-bar button:last-child {
+    border-bottom: 0 !important;
+}
+
+.map-pane .leaflet-bar a:hover,
+.map-pane .leaflet-bar button:hover {
+    color: var(--apricot) !important;
+    background: var(--raised) !important;
+}
+
+.map-pane .leaflet-bar a:focus-visible,
+.map-pane .leaflet-bar button:focus-visible {
+    outline: 2px solid var(--apricot);
+    outline-offset: -2px;
+}
+
+.map-pane .leaflet-bar a.leaflet-disabled {
+    color: var(--text-faint) !important;
+    background: var(--slate) !important;
+    cursor: default;
+}
+
+.map-pane .leaflet-bar button.active {
+    color: var(--slate) !important;
+    background: var(--apricot) !important;
+}
+
+/* Hide EasyButton containers (their buttons are moved into the file-layer toolbar) */
+.leaflet-bar.easy-button-container.leaflet-control {
+    display: none;
+}
+
+.map-pane .leaflet-control-layers-toggle {
+    width: 36px;
+    height: 36px;
+    background-color: var(--slate);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23facfad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 18px 18px;
+}
+
+.map-pane .leaflet-control-layers-expanded {
+    padding: 8px 12px 8px 8px;
+    color: var(--text);
+}
+
+.map-pane .leaflet-control-layers-list {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.map-pane .leaflet-control-layers label {
+    margin: 0;
+    padding: 3px 0;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.map-pane .leaflet-control-layers-selector {
+    accent-color: var(--apricot);
+}
+
+/* Time-to-next-point readout */
 .time-to-next-point-control-container {
     position: absolute;
     bottom: 10px;
     left: 10px;
 }
-/* Hide EasyButton containers */
-.leaflet-bar.easy-button-container.leaflet-control {
-    display: none;
-}
-/* Custom CSS to make layer control button smaller */
-.leaflet-control-layers-toggle {
-    width: 10px; /* Adjust width as needed */
-    height: 10px; /* Adjust height as needed */
-    font-size: 8px; /* Adjust font size as needed */
-    padding: 4px; /* Adjust padding as needed */
+
+#timeToPointText {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 0.875rem;
+    color: var(--text);
+    background: var(--slate);
+    border: 0;
 }
 
+/* ---------- Leaflet popups & menus ---------- */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    color: var(--text);
+    background: var(--slate);
+    box-shadow: 0 2px 10px rgba(20, 28, 29, 0.4);
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: var(--radius);
+}
+
+.leaflet-popup-content h3,
+.leaflet-popup-content h4 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+    color: var(--text-dim);
+}
+
+.custom-popup-content {
+    width: 300px;
+    max-width: 70vw;
+}
+
+.leaflet-menu {
+    display: none;
+    position: absolute;
+    z-index: 1001;
+    padding: 4px 0;
+    cursor: default;
+    user-select: none;
+    background-color: var(--slate);
+    border: 1px solid var(--well);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 10px rgba(20, 28, 29, 0.4);
+}
+
+.leaflet-menu a.leaflet-menu-item {
+    display: block;
+    padding: 4px 14px;
+    font-size: 0.875rem;
+    line-height: 22px;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    outline: 0;
+}
+
+.leaflet-menu a.leaflet-menu-item.over {
+    color: var(--slate);
+    background-color: var(--apricot);
+}
+
+.leaflet-menu-icon {
+    float: left;
+    width: 16px;
+    height: 16px;
+    margin: 3px 8px 0 0;
+    border: 0;
+}
+
+.marker-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 8px;
+    background-color: var(--slate);
+    border: 1px solid var(--well);
+    border-radius: var(--radius);
+}
+
+.menu-item {
+    padding: 8px 12px;
+    color: var(--text);
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background-color: var(--raised);
+}
+
+/* ---------- Modals & toasts ---------- */
+.modal-content {
+    color: var(--text);
+    background-color: var(--slate);
+    border: 1px solid var(--well);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(20, 28, 29, 0.5);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--rule);
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.modal .close,
+.toast .close {
+    color: var(--text);
+    text-shadow: none;
+    opacity: 0.75;
+}
+
+.modal .close:hover,
+.toast .close:hover {
+    color: var(--apricot);
+    opacity: 1;
+}
+
+.btn-close {
+    filter: invert(1) sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.2);
+}
+
+.modal-backdrop {
+    background-color: #141c1d;
+}
+
+.modal-backdrop.show {
+    opacity: 0.6;
+}
+
+.toast {
+    color: var(--text);
+    background-color: var(--slate);
+    border: 1px solid var(--well);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(20, 28, 29, 0.45);
+}
+
+.toast-header {
+    color: var(--text-dim);
+    background-color: transparent;
+    border-bottom: 1px solid var(--rule);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation: none !important;
+    }
+}
     </style>
 </head>
 
 <body>
-  {% if version_message %}
-        <div class="alert alert-warning" role="alert">
-            {{ version_message }}
+<div class="app">
+    <aside class="panel">
+        <header class="panel-head">
+            <h1 class="wordmark">iPhone GPS Spoof</h1>
+            <button type="button" id="exit-btn" class="link-btn" onclick="exitApp()">Shut down</button>
+        </header>
+
+        {% if timeout_message %}
+        <p class="notice" role="alert">{{ timeout_message }}</p>
+        {% endif %}
+        {% if error_message %}
+        <p class="notice" role="alert">{{ error_message }}</p>
+        {% endif %}
+
+        <section aria-label="Target position">
+            <p class="fix-coords" id="readout"><span id="readout-lat">&mdash;</span><span id="readout-lng"></span></p>
+            <p class="fix-hint">Drag the pin or double-click the map to move it.</p>
+        </section>
+
+        <section>
+            <label for="coordinates" class="field-label">Find a place</label>
+            <div class="field-row">
+                <input type="text" class="field" id="coordinates" placeholder="Paris, or 48.8566, 2.3522" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn btn-quiet" id="search" onclick="handleSearch()">Search</button>
+            </div>
+        </section>
+
+        <div class="actions">
+            <button type="button" class="btn btn-sim" data-toggle="popover" id="set-location" disabled onclick="setLocation()">Simulate location</button>
+            <button type="button" class="btn btn-stop" data-toggle="popover" id="stop-location" disabled onclick="stopLocation()">Stop</button>
         </div>
-    {% endif %}
 
-  {% if github_broadcast %}
-    <div class="alert alert-info" role="alert">
-        {{ github_broadcast }}
-    </div>
-    {% endif %}
-
-{% if timeout_message %}
-        <div class="alert alert-warning" role="alert">
-            {{ timeout_message }}
-        </div>
-    {% endif %}
-    {% if error_message %}
-        <div class="alert alert-danger" role="alert">
-            {{ error_message }}
-        </div>
-    {% endif %}
-<p><br></p>
-
-<div class="d-flex flex-column align-items-center flex-md-row container">
-    <h4 class="my-0 mx-auto font-weight-normal">GeoPort - Your location, Anywhere!</h4>
-    <a id="about-btn" class="btn btn-outline-primary pl-4 pr-4" href="#" title="GeoPort" style="display: none;">About</a>
-    <a id="exit-btn" class="btn btn-outline-primary pl-4 pr-4 ml-4" href="#" title="GeoPort" onclick="exitApp()">Exit</a>
-</div>
-
-
-
-<!-- Dark Mode switch -->
-<div class="d-flex justify-content-md-end mt-3 container">
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="darkModeSwitch" onchange="toggleDarkMode()">
-        <label class="form-check-label" for="darkModeSwitch">Dark Mode</label>
-
-    </div>
-</div>
-<div class="d-flex justify-content-md-end mt-3 container">
-    <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" role="switch" id="enableFuelPrices" onchange="toggleFuelTypeVisibility()">
-            <label for="enableFuelPrices"> Fuel Mode</label>
-    </div>
-</div>
-
-
-
-<div class="container">
-<!--    <div class="p-3 px-md-4 mb-3 bg-white border-bottom box-shadow dark-mode-bg"  id="border">-->
-    <div class="p-3 px-md-4 mb-3 border-bottom box-shadow dark-mode-bg"  id="border">
-
-</div>
-
-
-	<!-- Connect Device -->
+        <section class="device" aria-label="iPhone connection">
 {% if error_messages %}
-    <button type="button" class="btn btn-primary pl-4 pr-4" id="connect" onclick="connectDevice()" disabled>
-        <span id="connectText">Connect Device</span>
-    </button>
+            <button type="button" class="btn btn-connect" id="connect" onclick="connectDevice()" disabled>
+                <span id="connectText">Connect iPhone</span>
+            </button>
 {% else %}
-    <br>
-      <form>
-    <div class="mb-3">
-        <label for="device">Select Device:</label><br>
-        <div class="row">
-            <div class="col">
-                <select class="custom-select d-block w-100" id="device" required>
-                </select>
+            <label for="device" class="field-label">iPhone</label>
+            <div class="field-row">
+                <select class="field" id="device" required></select>
+                <button type="button" class="btn btn-quiet btn-square" id="refresh" onclick="populateDeviceList()" title="Refresh the list" aria-label="Refresh the list">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                </button>
             </div>
-            <div class="col-md-auto">
-                <button type="button" class="btn btn-primary pl-4 pr-4" id="refresh" onclick="populateDeviceList()">Refresh</button>
+
+            <!-- Connection details: hidden, but handy for debugging -->
+            <div style="display: none;">
+                <label for="connection">Connection:</label>
+                <select class="field" id="connection" required></select>
             </div>
-        </div>
-    </div>
-</form>
 
+            <div class="actions">
+                <button type="button" class="btn btn-connect" id="connect" onclick="connectDevice()">
+                    <span id="connectText">Connect iPhone</span>
+                    <span id="spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                </button>
+                <button type="button" class="btn btn-quiet" id="disconnect" onclick="disconnectDevice()" style="display: none;">Disconnect</button>
+            </div>
 
-
-    <!-- Keeping this code for the connection details drop down list, but hiding it. Not really required, but handy for debugging -->
-<div class="mb-3" style="display: none;">
-    <label for="connection">Connection:</label><br>
-    <div class="row">
-        <div class="col">
-            <select class="custom-select d-block w-100" id="connection" required>
-            </select>
-        </div>
-    </div>
-</div>
-
-<button type="button" class="btn btn-primary pl-4 pr-4" id="connect" onclick="connectDevice()">
-    <span id="connectText">Connect Device</span>
-    <span id="spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-</button>
-
-<button type="button" class="btn btn-danger pl-4 pr-4" id="disconnect" onclick="disconnectDevice()" style="display: none;">
-    Disconnect
-</button>
-
-
-    <!-- Add this input element with ID "rsdData" -->
-<input class="form-control" type="text" id="rsdData" placeholder="RSD Data…" readonly style="display: none;">  <!-- Initially hidden -->
-
+            <input class="field" type="text" id="rsdData" placeholder="RSD Data…" readonly style="display: none;">
 {% endif %}
-
-<p></p>
-    <form>
-<!-- Not implemented in standard version -->
-<!--<div class="mb-3">-->
-<!--        <input type="checkbox" role="switch" id="enableFuelPrices" onchange="toggleFuelTypeVisibility()" checked>-->
-<!--        <label for="enableFuelPrices"> Enable best fuel prices (Australia only)</label>-->
-<!--    </div>-->
-
-<!--     Fuel Region Dropdown -->
-    <div class="mb-3" id="fuelRegionSection" style="display: none;">
-    <label for="fuelRegion">Select Region:</label>
-    <select class="custom-select" id="fuelRegion" onchange="handleFuelTypeChange()">
-        <option value="All">All</option>
-        <option value="ACT">ACT</option>
-        <option value="NSW">NSW</option>
-        <option value="QLD">QLD</option>
-        <option value="VIC">VIC</option>
-        <option value="WA">WA</option>
-    </select>
-</div>
-        <!--     Fuel Type Dropdown -->
-    <div class="mb-3" id="fuelTypeSection" style="display: none;">
-        <label for="fuelType">Select fuel type:</label>
-        <select class="custom-select" id="fuelType" onchange="handleFuelTypeChange()">
-            <!-- Options will be populated dynamically -->
-        </select>
-        <p></p>
-        <div class="form-group">
-            <div class="collapse" id="fuelDataCollapse">
-                <label for="fuelText">Fuel Data</label>
-                <textarea class="form-control" id="fuelText" rows="8" readonly disabled></textarea>
+            <div class="panel-foot">
+                <p class="status" id="status" data-state="idle" aria-live="polite">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span id="status-text">No iPhone connected</span>
+                </p>
+                <a class="credit" href="https://github.com/davesc63/GeoPort" target="_blank" rel="noopener">Based on GeoPort</a>
             </div>
-        </div>
-    </div>
+        </section>
+    </aside>
 
-	<div id="dataList" class="mb-3"></div>
-        </form>
-	<div id="map"></div>
+    <main class="map-pane" aria-label="Map">
+        <div id="map"></div>
+    </main>
+</div>
 
 <script>
 //=========================== leaflet menu ====================
@@ -524,68 +977,6 @@ L.leafletMenu = function(a, b) {
     console.log("App Type: ", appVersionType);
     console.log("Platform: ", selectedDevicePlatform);
 
-      // Record app_visit when the page loads
-      //document.addEventListener('DOMContentLoaded', () => recordEvent('beta_visit'));
-
-      async function recordEvent(eventName) {
-        const apiUrl = 'https://api.geoport.me/';
-
-        try {
-          const response = await fetch(apiUrl + selectedDevicePlatform, {
-            mode: 'no-cors',
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              path: window.location.pathname,
-              [eventName]: true,
-            }),
-          });
-
-          if (!response.ok) {
-            console.error('Failed to record event:', response.status, response.statusText);
-          }
-        } catch (error) {
-          console.error('Error recording event:', error.message);
-        }
-      }
-
-    // Function to toggle Dark Mode
-    function toggleDarkMode() {
-      // Get the Dark Mode switch element
-      var darkModeSwitch = document.getElementById("darkModeSwitch");
-
-      // Check if Dark Mode switch is checked
-      if (darkModeSwitch.checked) {
-        // Enable Dark Mode
-        document.body.classList.add("dark-mode");
-      } else {
-        // Disable Dark Mode
-        document.body.classList.remove("dark-mode");
-      }
-    }
-
-
-if (appVersionType === "standard") {
-    var fuelTypeSection = document.getElementById('fuelTypeSection');
-    var fuelRegionSection = document.getElementById('fuelRegionSection');
-    var enableFuelPricesCheckbox = document.getElementById('enableFuelPrices');
-    var enableFuelPricesLabel = document.querySelector('label[for="enableFuelPrices"]');
-
-    // Hide the label for the checkbox
-    enableFuelPricesLabel.style.display = 'none';
-
-    // Hide the Fuel Type and Fuel Region sections
-    fuelTypeSection.style.display = 'none';
-    fuelRegionSection.style.display = 'none';
-
-    // Hide the "Enable best fuel prices" checkbox
-    enableFuelPricesCheckbox.style.display = 'none';
-}
-
-
-
     if (connectTextElement && rsdDataElement) {
         rsdDataElement.style.display = connectTextElement.innerText === "Connected" ? 'block' : 'none';
     }
@@ -631,12 +1022,6 @@ async function initializeMap(userLocale) {
     });
 
     // Create tile layers
-    var stadiaTileLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        noWrap: true,
-        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> contributors'
-    });
-
     var openStreetMapTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     });
@@ -650,49 +1035,6 @@ async function initializeMap(userLocale) {
 	maxZoom: 18,
 	attribution: 'Map <a href="https://memomaps.de/">memomaps.de</a> <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     });
-    var Stadia_AlidadeSmooth = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
-	minZoom: 0,
-	maxZoom: 20,
-	attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-	ext: 'png'
-    });
-
-    var Stadia_AlidadeSmoothDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
-        minZoom: 0,
-        maxZoom: 20,
-        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'png'
-    });
-    var Stadia_AlidadeSatellite = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.{ext}', {
-        minZoom: 0,
-        maxZoom: 20,
-        attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'jpg'
-    });
-    var Stadia_Outdoors = L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.{ext}', {
-        minZoom: 0,
-        maxZoom: 20,
-        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'png'
-    });
-    var Stadia_StamenToner = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.{ext}', {
-        minZoom: 0,
-        maxZoom: 20,
-        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'png'
-    });
-    var Stadia_StamenWatercolor = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.{ext}', {
-        minZoom: 1,
-        maxZoom: 16,
-        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'jpg'
-    });
-    var Stadia_StamenTerrain = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.{ext}', {
-        minZoom: 0,
-        maxZoom: 18,
-        attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        ext: 'png'
-    });
     var Esri_WorldStreetMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
     });
@@ -701,11 +1043,6 @@ async function initializeMap(userLocale) {
     });
     var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-    });
-    var CartoDB_Voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
     });
 
     // Use searchLocation to get coordinates based on userLocale
@@ -725,25 +1062,16 @@ async function initializeMap(userLocale) {
 
 
     // Add default tile layer
-    stadiaTileLayer.addTo(map);
+    openStreetMapTileLayer.addTo(map);
 
     // Define tile layer control options
     var baseLayers = {
-        "Stadia Maps": stadiaTileLayer,
         "OpenStreetMap": openStreetMapTileLayer,
         "OpenStreetMap_HOT": OpenStreetMap_HOT,
         "OPNVKarte": OPNVKarte,
-        "Stadia Alidade Smooth": Stadia_AlidadeSmooth,
-        "Stadia Alidade Smooth Dark": Stadia_AlidadeSmoothDark,
-        "Stadia Alidade Satellite": Stadia_AlidadeSatellite,
-        "Stadia Outdoors": Stadia_Outdoors,
-        "Stadia Stamen Toner": Stadia_StamenToner,
-        "Stadia Stamen Watercolor": Stadia_StamenWatercolor,
-        "Stadia Stamen Terrain": Stadia_StamenTerrain,
         "Esri World Street Map": Esri_WorldStreetMap,
         "Esri World Topo Map": Esri_WorldTopoMap,
         "Esri World Imagery": Esri_WorldImagery,
-        "CartoDB Voyager": CartoDB_Voyager,
 
 
     };
@@ -1877,55 +2205,6 @@ function populateDeviceList() {
 
 
 
-    // Checkbox visibility toggle
-    function toggleFuelTypeVisibility() {
-        var fuelTypeSection = document.getElementById('fuelTypeSection');
-        var fuelRegionSection = document.getElementById('fuelRegionSection');
-        var enableFuelPricesCheckbox = document.getElementById('enableFuelPrices');
-        if (fuelTypeSection && fuelRegionSection && enableFuelPricesCheckbox) {
-            fuelTypeSection.style.display = enableFuelPricesCheckbox.checked ? 'block' : 'none';
-            fuelRegionSection.style.display = enableFuelPricesCheckbox.checked ? 'block' : 'none';
-        }
-    }
-
-    // Define an asynchronous function to update DynamoDB
-    async function updateDynamoDB(selectedDeviceIdentifier, selectedDeviceVersion, selectedDeviceName, selectedDeviceClass, selectedDevicePlatform, appVersionNum, appType, selectedDeviceConnType, SelectedDeviceWifiState, selectedDeviceCountry) {
-
-        const apiUrl = 'https://api.geoport.me/';
-
-        try {
-            const response = await fetch(apiUrl + selectedDeviceIdentifier, {
-                mode: 'no-cors',
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    // Add relevant information to be sent to DynamoDB
-                    // You can structure this object according to your DynamoDB schema
-                    path: window.location.pathname,
-                    version: selectedDeviceVersion,
-                    deviceName: selectedDeviceName,
-                    deviceClass: selectedDeviceClass,
-                    platform: selectedDevicePlatform,
-                    appType: appType,
-                    appVersion: appVersionNum,
-                    connType: selectedDeviceConnType,
-                    wifiState: SelectedDeviceWifiState,
-                    country: selectedDeviceCountry,
-
-
-
-                }),
-            });
-
-            if (!response.ok) {
-
-            }
-        } catch (error) {
-
-        }
-    }
 
 
 
@@ -1949,15 +2228,9 @@ function connectDevice() {
     var deviceName = selectedOptionValue.DeviceName;
     var deviceClass = selectedOptionValue.DeviceClass;
     var SelectedDeviceWifiState = selectedOptionValue.wifiState;
-    var selectedDeviceName = deviceName;
-    var selectedDeviceClass = deviceClass;
     var selectedDeviceVersion = productVersion;
     var selectedDeviceConnType = selectedDeviceConnectionType;
-    var selectedDeviceCountry = selectedOptionValue.userLocale;
     //var selectedDeviceWifiAddress = wifiAddress;
-    var selectedDevicePlatform = "{{ current_platform }}";
-    var appVersionNum = "{{ app_version_num }}";
-    var appType = "{{ app_version_type }}";
 
     console.log('identifier: ', selectedDeviceIdentifier);
     console.log('connType: ', selectedDeviceConnectionType);
@@ -1979,8 +2252,6 @@ function connectDevice() {
 <!--    console.log('wifi address:', selectedDeviceWifiAddress);-->
 
 
-    // Call the function to update DynamoDB
-    updateDynamoDB(selectedDeviceIdentifier, selectedDeviceVersion, selectedDeviceName, selectedDeviceClass, selectedDevicePlatform, appVersionNum, appType, selectedDeviceConnType, SelectedDeviceWifiState, selectedDeviceCountry);
 
     if (connectTextElement) {
         connectTextElement.innerText = "Connecting, please wait...";
@@ -2032,7 +2303,7 @@ function connectDevice() {
 
             // Reset connectTextElement
             if (connectTextElement) {
-                connectTextElement.innerText = "Connect Device";
+                connectTextElement.innerText = "Connect iPhone";
                 spinnerElement.style.display = 'none'; // Display the spinner
             }
 
@@ -2171,7 +2442,7 @@ function showModalWifiModeRequired() {
 
         // Reset connectTextElement
         if (connectTextElement) {
-            connectTextElement.innerText = "Connect Device";
+            connectTextElement.innerText = "Connect iPhone";
         }
 
         // Enable Connect button
@@ -2181,56 +2452,6 @@ function showModalWifiModeRequired() {
     }
 
 
-
-    async function handleFuelTypeChange() {
-    var fuelTypeDropdown = document.getElementById('fuelType');
-    var fuelText = document.getElementById('fuelText');
-    var fuelRegionDropdown = document.getElementById('fuelRegion');
-    const selectedFuelRegion = fuelRegionDropdown.value;
-    const selectedFuelType = fuelTypeDropdown.value;
-    console.log('Selected Fuel Region = ', selectedFuelRegion);
-    fuelText.value = '';
-    fuelTypeDropdown.innerHTML = '';
-
-    try {
-        const response = await fetch(`/api/fuel_types?region=${selectedFuelRegion}`);
-        const fuelTypes = await response.json();
-        fuelTypes.sort();
-        fuelTypes.forEach(type => {
-            var option = document.createElement('option');
-            option.value = type;
-            option.text = type;
-            fuelTypeDropdown.add(option);
-        });
-        fuelTypeDropdown.value = selectedFuelType;
-        updateFuelText(selectedFuelType, selectedFuelRegion);
-    } catch (error) {
-        console.error('Error fetching fuel types:', error);
-    }
-}
-
-async function updateFuelText(selectedFuelType, selectedFuelRegion) {
-    var fuelTypeDropdown = document.getElementById('fuelType');
-    var fuelText = document.getElementById('fuelText');
-    var fuelDataCollapse = document.getElementById('fuelDataCollapse');
-    try {
-        const response = await fetch(`/api/data/${selectedFuelType}?region=${selectedFuelRegion}`);
-        const fuelTypeData = await response.json();
-        fuelText.value = `
-            Type: ${fuelTypeData.type}
-            Price: ${fuelTypeData.price}
-            Suburb: ${fuelTypeData.suburb}
-            State: ${fuelTypeData.state}
-            Lat: ${fuelTypeData.lat}
-            Lng: ${fuelTypeData.lng}
-        `;
-        setCoordinates(fuelTypeData.lat, fuelTypeData.lng);
-        handleSearch();
-        fuelDataCollapse.classList.toggle('show', !!fuelTypeData);
-    } catch (error) {
-        console.error('Error fetching fuel type data:', error);
-    }
-}
 
 function setLocationArrows() {
         fetch('/set_location', {
@@ -2263,6 +2484,9 @@ function setLocationArrows() {
             .then(data => {
                 displayToast(data); // Display response as a toast
                 console.log('set_location response:', data);
+                if (data === 'Location set successfully') {
+                    window.simulatedCoords = document.getElementById('coordinates').value;
+                }
             })
             .catch(error => {
                 console.error('Error setting location:', error);
@@ -2281,6 +2505,9 @@ function setLocationArrows() {
             .then(data => {
                 displayToast(data); // Display response as a toast
                 console.log('stop_location response:', data);
+                if (data === 'Location cleared successfully') {
+                    window.simulatedCoords = null;
+                }
             })
             .catch(error => {
                 console.error('Error stopping location:', error);
@@ -2306,6 +2533,9 @@ function setLocationArrows() {
 
     function exitApp() {
         console.log('Exit App function called');
+        if (!confirm('Shut down the server? It will need to be restarted manually.')) {
+            return;
+        }
 
         try {
             // Display a non-blocking modal dialog indicating server shutdown
@@ -2443,7 +2673,7 @@ function continueAfterDeveloperModeRequired() {
         // Perform any actions needed to cancel after developer mode is required
         // Reset connectTextElement
         if (connectTextElement) {
-            connectTextElement.innerText = "Connect Device";
+            connectTextElement.innerText = "Connect iPhone";
             spinnerElement.style.display = 'none'; // Hide the spinner
         }
 
@@ -2465,7 +2695,7 @@ function continueAfterDeveloperModeRequired() {
         // Perform any actions needed to cancel after developer mode is required
         // Reset connectTextElement
         if (connectTextElement) {
-            connectTextElement.innerText = "Connect Device";
+            connectTextElement.innerText = "Connect iPhone";
             spinnerElement.style.display = 'none'; // Hide the spinner
         }
 
@@ -2488,7 +2718,6 @@ function continueAfterDeveloperModeRequired() {
     console.log("test");
     initializeMap();
     searchLocation();
-    handleFuelTypeChange();
     document.getElementById('rsdData').addEventListener('change', updateSetLocationButtonStatus);
     document.getElementById('coordinates').addEventListener('input', updateSetLocationButtonStatus);
     populateDeviceList();
@@ -2519,56 +2748,71 @@ function continueAfterDeveloperModeRequired() {
 });
 </script>
 
-<p></p>
+<script>
+// Position readout and status line. The code above updates #coordinates and
+// #connectText in many places without firing events, so poll them instead.
+(function () {
+    var coords = document.getElementById('coordinates');
+    var connectText = document.getElementById('connectText');
+    var device = document.getElementById('device');
+    var readout = document.getElementById('readout');
+    var latEl = document.getElementById('readout-lat');
+    var lngEl = document.getElementById('readout-lng');
+    var status = document.getElementById('status');
+    var statusText = document.getElementById('status-text');
+    var lastCoords = null;
 
-<div class="mb-3">
-    <div class="row align-items-center">
-        <div class="col-md-auto">
-            <label class="mb-0" for="coordinates">Location:</label>
-        </div>
-        <div class="col">
-            <input type="text" class="form-control" id="coordinates">
-        </div>
-        <div class="col-md-auto">
-            <button type="button" class="btn btn-primary" id="search" onclick="handleSearch()">Search</button>
-        </div>
-    </div>
-</div>
+    function degrees(value, positive, negative) {
+        return Math.abs(value).toFixed(5) + '<span class="unit">°' + (value < 0 ? negative : positive) + '</span>';
+    }
 
-<div class="mb-3">
-    <div class="row align-items-center">
-        <div class="col">
-            <button type="button" class="btn btn-primary w-100" data-toggle="popover" id="set-location" disabled onclick="setLocation()">Simulate Location</button>
-        </div>
-        <div class="col">
-            <button type="button" class="btn btn-primary w-100" data-toggle="popover" id="stop-location" disabled onclick="stopLocation()">Stop Location</button>
-        </div>
-    </div>
+    function deviceName() {
+        try {
+            return JSON.parse(device.value).DeviceName || 'iPhone';
+        } catch (e) {
+            return 'iPhone';
+        }
+    }
 
-    <!-- Centered Buy Me A Coffee button -->
-    <div class="row justify-content-center">
-        <div class="col-6 text-center"> <!-- Adjust the column size and add text-center class -->
-            <!-- Your Buy Me A Coffee button code -->
-            <p></p>
-            <a href="https://www.buymeacoffee.com/davesc63">
-                <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer&emoji=🍺&slug=davesc63&button_colour=FFDD00&font_colour=000000&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a beer">
-            </a>
-        </div>
-    </div>
-</div>
+    function setStatus(state, text) {
+        if (status.dataset.state !== state) status.dataset.state = state;
+        if (statusText.textContent !== text) statusText.textContent = text;
+    }
 
+    function render() {
+        if (coords.value !== lastCoords) {
+            lastCoords = coords.value;
+            var parts = lastCoords.split(',').map(parseFloat);
+            if (parts.length === 2 && Math.abs(parts[0]) <= 90 && Math.abs(parts[1]) <= 180) {
+                latEl.innerHTML = degrees(parts[0], 'N', 'S');
+                lngEl.innerHTML = degrees(parts[1], 'E', 'W');
+            }
+        }
 
+        var label = connectText ? connectText.innerText.trim() : '';
+        if (label !== 'Connected') window.simulatedCoords = null;
+        var live = window.simulatedCoords != null && window.simulatedCoords === coords.value;
+        readout.classList.toggle('is-live', live);
 
-    </div>
-</div>
-    <hr>
-Version: {{ app_version_num }}<br>
-Need help? Please see the <a href="https://github.com/davesc63/GeoPort/blob/main/FAQ.md" target="_blank">FAQ</a><br>
-Feedback? Please see the <a href="https://www.surveymonkey.com/r/5LJR2M5" target="_blank">Survey</a>
+        if (window.simulatedCoords != null) {
+            setStatus('simulating', live ? 'Simulating on ' + deviceName() : 'Pin moved. Simulate location to send the iPhone here.');
+        } else if (label === 'Connected') {
+            setStatus('connected', 'Connected to ' + deviceName());
+        } else if (/^(Connecting|Enabling)/.test(label)) {
+            setStatus('connecting', 'Connecting…');
+        } else if (/^Error/.test(label)) {
+            setStatus('error', 'Couldn’t connect. Unlock the iPhone and try again.');
+        } else if (device && device.options.length === 0) {
+            setStatus('idle', 'No iPhone found. Plug it in, then refresh.');
+        } else {
+            setStatus('idle', 'No iPhone connected');
+        }
+    }
 
-
-
-
+    render();
+    setInterval(render, 250);
+})();
+</script>
 
 <div class="modal fade" id="shutdownModal" tabindex="-1" role="dialog" aria-labelledby="shutdownModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -2724,12 +2968,6 @@ Feedback? Please see the <a href="https://www.surveymonkey.com/r/5LJR2M5" target
         {{ data }}
     </div>
   </div>
-</div>
-<!-- Toast Container -->
-  <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 200px;">
-    <div class="toast-container position-absolute top-0 end-0 p-3" style="z-index: 9999;"></div>
-  </div>
-
 </div>
 
 </body>
