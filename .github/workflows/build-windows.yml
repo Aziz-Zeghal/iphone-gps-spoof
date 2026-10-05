@@ -19,8 +19,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller==6.10.0
 
-      # pytun_pmd3 and pywintunx_pmd3 ship the Windows tunnel DLLs and driver,
-      # which PyInstaller does not pick up on its own.
+      # PyInstaller misses a few things on its own:
+      # - pytun_pmd3 and pywintunx_pmd3 ship the Windows tunnel DLLs and driver
+      # - zeroconf's Cython modules import each other invisibly
+      # - pyimg4 reads its own package metadata at import time
       - name: Build exe
         run: >
           pyinstaller --onefile --name iphone-gps-spoof
@@ -28,6 +30,8 @@ jobs:
           --collect-all pymobiledevice3
           --collect-all pytun_pmd3
           --collect-all pywintunx_pmd3
+          --collect-submodules zeroconf
+          --copy-metadata pyimg4
           src/main.py
 
       - name: Smoke test
