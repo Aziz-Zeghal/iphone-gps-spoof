@@ -1,0 +1,55 @@
+name: Build Windows exe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.10.0
+
+      # pytun_pmd3 and pywintunx_pmd3 ship the Windows tunnel DLLs and driver,
+      # which PyInstaller does not pick up on its own.
+      - name: Build exe
+        run: >
+          pyinstaller --onefile --name iphone-gps-spoof
+          --add-data "src/templates;templates"
+          --collect-all pymobiledevice3
+          --collect-all pytun_pmd3
+          --collect-all pywintunx_pmd3
+          src/main.py
+
+      - name: Smoke test
+        shell: pwsh
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          $proc = Start-Process -FilePath dist\iphone-gps-spoof.exe -ArgumentList '--no-browser', '--port', '54321' `
+            -PassThru -RedirectStandardOutput out.log -RedirectStandardError err.log
+          $ok = $false
+          for ($i = 0; $i -lt 45; $i++) {
+            Start-Sleep -Seconds 2
+            try {
+              $page = Invoke-WebRequest -Uri http://localhost:54321/ -UseBasicParsing -TimeoutSec 10
+              if ($page.StatusCode -eq 200 -and $page.Content -match 'iPhone GPS Spoof') { $ok = $true; break }
+            } catch {}
+          }
+          taskkill /PID $proc.Id /T /F | Out-Null
+          Get-Content out.log, err.log -ErrorAction SilentlyContinue | Select-Object -Last 40
+          if (-not $ok) { Write-Error 'The exe did not serve the page'; exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iphone-gps-spoof-windows
+          path: dist/iphone-gps-spoof.exe
