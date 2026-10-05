@@ -20,12 +20,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pymobiledevice3==11.23.0 pyinstaller==6.22.3
 
-      # Same PyInstaller fixes as the app build: zeroconf's Cython modules and pyimg4's metadata
+      # Same PyInstaller fixes as the app build: pytun_pmd3's wintun.dll (loaded at import),
+      # zeroconf's Cython modules and pyimg4's metadata
       - name: Build exe
         shell: pwsh
         run: |
           Set-Content -Path pmd3_cli.py -Value "from pymobiledevice3.__main__ import main`n`nmain()"
-          pyinstaller --onedir --name pymobiledevice3 --collect-all pymobiledevice3 `
+          pyinstaller --onedir --name pymobiledevice3 --collect-all pymobiledevice3 --collect-all pytun_pmd3 `
             --collect-submodules zeroconf --copy-metadata pyimg4 pmd3_cli.py
 
       - name: Smoke test
