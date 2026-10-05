@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# PyInstaller output
+build/
+dist/
+
+# Tooling
+.ruff_cache/
+.playwright-mcp/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

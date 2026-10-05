@@ -32,6 +32,7 @@ Then open `http://localhost:54321`, or `http://<tailscale-ip>:54321` from anothe
 - Frontend: `src/templates/map.html`, plain HTML/CSS/JS with libraries loaded from CDNs. No build step: edit, restart the server, refresh. `src/templates/map2.html` is not used.
 - The code is GeoPort v2.3.3, the latest source upstream published. `pymobiledevice3` is pinned to 4.4.1, the newest release that matches it. Newer releases changed the API to async, so upgrading needs code changes.
 - To add a package: `uv pip install <package>`, then add its pinned line to `requirements.txt`.
+- Lint with `uvx ruff check src` (config in `pyproject.toml`).
 
 ## License
 
