@@ -17,12 +17,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller==6.10.0
+          pip install -r requirements.txt pyinstaller==6.22.3
 
       # A folder build (--onedir) starts much faster than --onefile, which unpacks
       # itself into a temp folder on every launch.
       # PyInstaller misses a few things on its own:
-      # - pytun_pmd3 and pywintunx_pmd3 ship the Windows tunnel DLLs and driver
+      # - pytun_pmd3 loads its wintun.dll at import
       # - zeroconf's Cython modules import each other invisibly
       # - pyimg4 reads its own package metadata at import time
       - name: Build exe
@@ -31,7 +31,6 @@ jobs:
           --add-data "src/templates;templates"
           --collect-all pymobiledevice3
           --collect-all pytun_pmd3
-          --collect-all pywintunx_pmd3
           --collect-submodules zeroconf
           --copy-metadata pyimg4
           src/main.py
@@ -50,6 +49,12 @@ jobs:
               $page = Invoke-WebRequest -Uri http://localhost:54321/ -UseBasicParsing -TimeoutSec 10
               if ($page.StatusCode -eq 200 -and $page.Content -match 'iPhone GPS Spoof') { $ok = $true; break }
             } catch {}
+          }
+          # The device list goes through device.py and pymobiledevice3 (no iPhone here, so it is empty)
+          if ($ok) {
+            $devices = Invoke-WebRequest -Uri http://localhost:54321/list_devices -UseBasicParsing -TimeoutSec 60
+            Write-Host "list_devices: $($devices.StatusCode) $($devices.Content)"
+            if ($devices.StatusCode -ne 200) { $ok = $false }
           }
           taskkill /PID $proc.Id /T /F | Out-Null
           Get-Content out.log, err.log -ErrorAction SilentlyContinue | Select-Object -Last 40
