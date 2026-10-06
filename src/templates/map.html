@@ -2299,6 +2299,7 @@ function connectDevice() {
         if ('error' in data) {
             // Display the error message as a popup or text on the page
             //alert(data.error); // You can use a better UI method here
+            document.getElementById('connectErrorMessage').innerText = data.error;
             showModalTimeout();
 
             // Reset connectTextElement
@@ -2917,15 +2918,13 @@ function continueAfterDeveloperModeRequired() {
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalTimeout">Connect Timeout</h5>
+                <h5 class="modal-title" id="modalTimeout">Couldn’t connect</h5>
                 <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body text-center">
-                <p>Unable to create device tunnel within 60 seconds</p>
-
-                <p>Please try to connect again</p>
+                <p id="connectErrorMessage"></p>
 
             </div>
             <div class="modal-footer d-flex justify-content-center">

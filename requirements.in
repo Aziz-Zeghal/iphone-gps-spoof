@@ -1,0 +1,4 @@
+flask
+requests
+pycountry
+pymobiledevice3==11.23.0
