@@ -52,8 +52,10 @@ class Pmd3Backend:
         from pymobiledevice3.lockdown import create_using_usbmux
         from pymobiledevice3.usbmux import list_devices
 
+        mux_devices = await list_devices()
+        logger.info(f"Apple's USB service reports: {[(d.serial, d.connection_type) for d in mux_devices]}")
         devices = []
-        for mux_device in await list_devices():
+        for mux_device in mux_devices:
             if mux_device.connection_type != "USB":
                 continue
             try:
@@ -86,26 +88,50 @@ class Pmd3Backend:
 
         await AmfiService(lockdown).enable_developer_mode()
 
-    async def mount_developer_image(self, lockdown: Any) -> None:
-        from pymobiledevice3.services.mobile_image_mounter import auto_mount
-
-        await auto_mount(lockdown)
-
-    async def open_location(self, lockdown: Any, udid: str, stack: contextlib.AsyncExitStack) -> Any:
-        """Open the location service; everything opened is closed by `stack`."""
+    async def open_service_provider(self, lockdown: Any, udid: str, stack: contextlib.AsyncExitStack) -> Any:
+        """What the developer services go through: the no-admin tunnel on iOS 17+, lockdown below."""
         major = int(lockdown.short_info.get("ProductVersion", "0").split(".")[0])
         if major < 17:
-            from pymobiledevice3.services.simulate_location import DtSimulateLocation
-
-            return DtSimulateLocation(lockdown)
+            return lockdown
 
         from pymobiledevice3.remote.rsd_tunnel import PreferredRsdTunnel
+
+        # Closing the tunnel (via `stack`) also closes any service connection left open on it
+        return await stack.enter_async_context(PreferredRsdTunnel(serial=udid))
+
+    async def mount_developer_image(self, provider: Any) -> None:
+        from pymobiledevice3.exceptions import AlreadyMountedError
+        from pymobiledevice3.services import mobile_image_mounter as mounter_module
+
+        if mounter_module.uses_personalized_image(provider):
+            mounter_class = mounter_module.PersonalizedImageMounter
+        else:
+            mounter_class = mounter_module.DeveloperDiskImageMounter
+
+        # Check first, on a connection that is always closed: auto_mount raises when an image is
+        # already mounted, and on that path leaves its own connection open, which blocks later mounts.
+        async with mounter_class(lockdown=provider) as mounter:
+            if await mounter.is_image_mounted(mounter.IMAGE_TYPE):
+                logger.info("Developer disk image already mounted")
+                return
+        try:
+            await mounter_module.auto_mount(provider)
+        except AlreadyMountedError:
+            logger.info("Developer disk image already mounted")
+
+    async def open_location(self, provider: Any, stack: contextlib.AsyncExitStack) -> Any:
+        """Open the location service; everything opened is closed by `stack`."""
+        from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
+
+        if not isinstance(provider, RemoteServiceDiscoveryService):
+            from pymobiledevice3.services.simulate_location import DtSimulateLocation
+
+            return DtSimulateLocation(provider)
+
         from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
         from pymobiledevice3.services.dvt.instruments.location_simulation import LocationSimulation
 
-        # No-admin tunnel to the iOS 17+ developer services
-        rsd = await stack.enter_async_context(PreferredRsdTunnel(serial=udid))
-        dvt = await stack.enter_async_context(DvtProvider(rsd))
+        dvt = await stack.enter_async_context(DvtProvider(provider))
         return await stack.enter_async_context(LocationSimulation(dvt))
 
 
@@ -183,10 +209,13 @@ class DeviceManager:
         try:
             if not await self._backend.developer_mode_status(lockdown):
                 raise DeveloperModeRequired()
+            # Same order as `mounter auto-mount --userspace` then `simulate-location set --userspace`
+            logger.info("Opening the tunnel to the iPhone")
+            provider = await self._backend.open_service_provider(lockdown, udid, stack)
             logger.info("Mounting the developer disk image")
-            await self._backend.mount_developer_image(lockdown)
+            await self._backend.mount_developer_image(provider)
             logger.info("Opening the location service")
-            location = await self._backend.open_location(lockdown, udid, stack)
+            location = await self._backend.open_location(provider, stack)
         except BaseException:
             await stack.aclose()
             await self._backend.close_lockdown(lockdown)

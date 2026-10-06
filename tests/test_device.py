@@ -38,6 +38,8 @@ class FakeBackend:
         self.opened_lockdowns = 0
         self.closed_lockdowns = 0
         self.location_closed = False
+        self.tunnel_closed = False
+        self.mounted_on = None
         self.mounts = 0
         self.locations_opened = 0
         self.developer_mode_enabled = 0
@@ -64,12 +66,20 @@ class FakeBackend:
             raise self.enable_error
         self.developer_mode_enabled += 1
 
-    async def mount_developer_image(self, lockdown):
+    async def open_service_provider(self, lockdown, udid, stack):
+        async def close_tunnel():
+            self.tunnel_closed = True
+
+        stack.push_async_callback(close_tunnel)
+        return "tunnel"
+
+    async def mount_developer_image(self, provider):
         self.mounts += 1
+        self.mounted_on = provider
         if self.mount_error:
             raise self.mount_error
 
-    async def open_location(self, lockdown, udid, stack):
+    async def open_location(self, provider, stack):
         self.locations_opened += 1
 
         async def mark_closed():
@@ -105,6 +115,7 @@ def test_connect_mounts_and_opens_location_once(make_manager):
     manager.connect("00008120-TEST")  # already connected: no second session
 
     assert (backend.mounts, backend.locations_opened) == (1, 1)
+    assert backend.mounted_on == "tunnel"  # like `mounter auto-mount --userspace`
 
 
 def test_connect_requires_developer_mode(make_manager):
@@ -125,6 +136,7 @@ def test_locked_phone_during_mount_explains_and_cleans_up(make_manager):
     with pytest.raises(DeviceError, match="Unlock the iPhone"):
         manager.connect("00008120-TEST")
     assert backend.closed_lockdowns == 1
+    assert backend.tunnel_closed  # also closes anything the failed mount left open on it
     with pytest.raises(DeviceError, match="Connect the iPhone first"):
         manager.set_location(1, 2)
 
@@ -211,3 +223,79 @@ def test_a_call_that_times_out_does_not_block_later_calls(make_manager, monkeypa
 )
 def test_explain(error, expected):
     assert expected in explain(error)
+
+
+class FakeMounter:
+    IMAGE_TYPE = "Personalized"
+    mounted = False
+    opened = closed = 0
+
+    def __init__(self, lockdown):
+        self.lockdown = lockdown
+
+    async def __aenter__(self):
+        FakeMounter.opened += 1
+        return self
+
+    async def __aexit__(self, *_):
+        FakeMounter.closed += 1
+
+    async def is_image_mounted(self, image_type):
+        return FakeMounter.mounted
+
+
+@pytest.fixture
+def fake_mounter(monkeypatch):
+    image_mounter = pytest.importorskip("pymobiledevice3.services.mobile_image_mounter")
+    calls = []
+
+    async def fake_auto_mount(provider):
+        calls.append(provider)
+        if fake_auto_mount.error:
+            raise fake_auto_mount.error
+
+    fake_auto_mount.error = None
+    FakeMounter.mounted, FakeMounter.opened, FakeMounter.closed = False, 0, 0
+    monkeypatch.setattr(image_mounter, "PersonalizedImageMounter", FakeMounter)
+    monkeypatch.setattr(image_mounter, "DeveloperDiskImageMounter", FakeMounter)
+    monkeypatch.setattr(image_mounter, "uses_personalized_image", lambda provider: True)
+    monkeypatch.setattr(image_mounter, "auto_mount", fake_auto_mount)
+    return fake_auto_mount, calls
+
+
+def run(coroutine):
+    import asyncio
+
+    return asyncio.run(coroutine)
+
+
+def test_mount_skips_an_image_that_is_already_mounted(fake_mounter):
+    from device import Pmd3Backend
+
+    _, calls = fake_mounter
+    FakeMounter.mounted = True
+    run(Pmd3Backend().mount_developer_image("tunnel"))
+
+    assert calls == []
+    assert FakeMounter.opened == FakeMounter.closed == 1  # the check's connection is always closed
+
+
+def test_mount_mounts_when_needed(fake_mounter):
+    from device import Pmd3Backend
+
+    _, calls = fake_mounter
+    run(Pmd3Backend().mount_developer_image("tunnel"))
+
+    assert calls == ["tunnel"]
+
+
+def test_mount_treats_already_mounted_as_success(fake_mounter):
+    from pymobiledevice3.exceptions import AlreadyMountedError
+
+    from device import Pmd3Backend
+
+    auto_mount, calls = fake_mounter
+    auto_mount.error = AlreadyMountedError()
+    run(Pmd3Backend().mount_developer_image("tunnel"))  # no exception
+
+    assert calls == ["tunnel"]
